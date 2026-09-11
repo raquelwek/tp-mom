@@ -15,3 +15,14 @@ _, err = ch.QueueDeclare(queueName, true, false, false, false, nil)
 //                                 durable  ad  excl  noWait, autoDelete, args
 ```
 Así nos aseguramos de tener todos el control posible sobre la misma y que además se pueda compartir la cola entre dos Middlewares con coneconexionesxoines distintas.
+
+#### Send
+Para lograr enviar un mensaje a la cola asignda usamos `PublishWithContext` y usamos el exchange por defecto
+para enviar al nombre de la cola asignado.
+
+#### StartConsuming
+Si el mensaje falla se devuelve a la cola pues requeue =true
+´´´
+ d.Nack(false, true)
+ //     multiple, requeue
+´´´

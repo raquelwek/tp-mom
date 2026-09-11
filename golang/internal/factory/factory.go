@@ -26,7 +26,10 @@ func CreateQueueMiddleware(queueName string, connectionSettings m.ConnSettings) 
 	if err != nil {
 		return nil, err
 	}
-	return &m.QueueMiddleware{QueueName: queueName, Conn: conn, Channel: ch}, nil
+	closeErr := make(chan *rmq.Error, 1)
+	conn.NotifyClose(closeErr)
+	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, 1))
+	return &m.QueueMiddleware{QueueName: queueName, Conn: conn, Channel: ch, Confirms: confirms}, nil
 }
 
 func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings m.ConnSettings) (m.Middleware, error) {
