@@ -8,6 +8,7 @@ import (
 )
 
 const amqpURI = "amqp://guest:guest@%s:%d/"
+const ExchangeTopic = "topic"
 
 func CreateQueueMiddleware(queueName string, connectionSettings m.ConnSettings) (m.Middleware, error) {
 
@@ -33,7 +34,45 @@ func CreateQueueMiddleware(queueName string, connectionSettings m.ConnSettings) 
 }
 
 func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings m.ConnSettings) (m.Middleware, error) {
-	return nil, nil
+	conn, err := rmq.Dial(formatURI(connectionSettings))
+
+	if err != nil {
+		return nil, err
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ch.Confirm(false); err != nil { // para manejar acks y nacks
+		return nil, err
+	}
+	err = ch.ExchangeDeclare(exchange, ExchangeTopic, true, false, false, false, nil)
+	if err != nil {
+		return nil, err
+	}
+	queue, err := ch.QueueDeclare("", false, true, true, false, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range keys {
+		err = ch.QueueBind(queue.Name, key, exchange, false, nil)
+	}
+	closeErr := make(chan *rmq.Error, 1)
+	conn.NotifyClose(closeErr)
+
+	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, 1))
+
+	return &m.ExchangeMiddleware{
+		ExchangeName: exchange,
+		QueueName:    queue.Name, // la queue interna generada
+		RoutingKeys:  keys,
+		Connection:   conn,
+		Channel:      ch,
+		Confirms:     confirms,
+		CloseErr:     closeErr,
+	}, nil
 }
 
 func formatURI(connectionSettings m.ConnSettings) string {
