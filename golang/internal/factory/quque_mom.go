@@ -1,9 +1,11 @@
-package middleware
+package factory
 
 // amqp091-go
 import (
 	"context"
 	"errors"
+
+	m "github.com/7574-sistemas-distribuidos/tp-mom/golang/internal/middleware"
 
 	"github.com/google/uuid"
 	rmq "github.com/rabbitmq/amqp091-go"
@@ -13,19 +15,19 @@ const DEFAULT_EXCHANGE = ""
 const PLAIN_TEXT_TYPE = "text/plain"
 
 type QueueMiddleware struct {
-	QueueName   string
+	queueName   string
 	consumerTag string
-	Conn        *rmq.Connection
-	Channel     *rmq.Channel
+	conn        *rmq.Connection
+	channel     *rmq.Channel
 	closeErr    chan *rmq.Error
-	Confirms    chan rmq.Confirmation
+	confirms    chan rmq.Confirmation
 }
 
-func (q *QueueMiddleware) StartConsuming(callbackFunc func(msg Message, ack func(), nack func())) error {
+func (q *QueueMiddleware) StartConsuming(callbackFunc func(msg m.Message, ack func(), nack func())) error {
 	tag := uuid.NewString()
 
-	deliveries, err := q.Channel.Consume(
-		q.QueueName,
+	deliveries, err := q.channel.Consume(
+		q.queueName,
 		tag,
 		false,
 		false,
@@ -35,9 +37,9 @@ func (q *QueueMiddleware) StartConsuming(callbackFunc func(msg Message, ack func
 	)
 	if err != nil {
 		if q.isDisconnected() {
-			return ErrMessageMiddlewareDisconnected
+			return m.ErrMessageMiddlewareDisconnected
 		}
-		return ErrMessageMiddlewareMessage
+		return m.ErrMessageMiddlewareMessage
 	}
 	q.consumerTag = tag
 	go receiveMessages(deliveries, callbackFunc)
@@ -49,24 +51,24 @@ func (qm *QueueMiddleware) StopConsuming() error {
 		// aun no estaba conectado, no tiene efecto
 		return nil
 	}
-	err := qm.Channel.Cancel(qm.consumerTag, false)
+	err := qm.channel.Cancel(qm.consumerTag, false)
 
 	if err != nil {
 		if qm.isDisconnected() || errors.Is(err, rmq.ErrClosed) {
-			return ErrMessageMiddlewareDisconnected
+			return m.ErrMessageMiddlewareDisconnected
 		}
 
-		return ErrMessageMiddlewareMessage
+		return m.ErrMessageMiddlewareMessage
 	}
 	qm.consumerTag = ""
 	return nil
 }
 
-func (qm *QueueMiddleware) Send(msg Message) error {
-	err := qm.Channel.PublishWithContext(
+func (qm *QueueMiddleware) Send(msg m.Message) error {
+	err := qm.channel.PublishWithContext(
 		context.Background(),
 		DEFAULT_EXCHANGE, // exchange: vacío = exchange por defecto
-		qm.QueueName,     // routing key = nombre de la queue
+		qm.queueName,     // routing key = nombre de la queue
 		false,            // mandatory
 		false,            // immediate
 		rmq.Publishing{
@@ -77,27 +79,27 @@ func (qm *QueueMiddleware) Send(msg Message) error {
 	)
 	if err != nil {
 		if qm.isDisconnected() || errors.Is(err, rmq.ErrClosed) {
-			return ErrMessageMiddlewareDisconnected
+			return m.ErrMessageMiddlewareDisconnected
 		}
-		return ErrMessageMiddlewareMessage
+		return m.ErrMessageMiddlewareMessage
 	}
 	return nil
 }
 
 // mbozunovsky@fi.uba.ar
 func (qm *QueueMiddleware) Close() error {
-	if qm.Conn == nil || qm.Conn.IsClosed() {
+	if qm.conn == nil || qm.conn.IsClosed() {
 		return nil
 	}
 
 	if qm.consumerTag != "" {
 		if err := qm.StopConsuming(); err != nil {
-			return ErrMessageMiddlewareClose
+			return m.ErrMessageMiddlewareClose
 		}
 	}
 
-	if err := qm.Conn.Close(); err != nil {
-		return ErrMessageMiddlewareClose
+	if err := qm.conn.Close(); err != nil {
+		return m.ErrMessageMiddlewareClose
 	}
 
 	return nil
@@ -107,14 +109,14 @@ func (qm *QueueMiddleware) isDisconnected() bool {
 	case <-qm.closeErr:
 		return true
 	default:
-		return qm.Conn.IsClosed()
+		return qm.conn.IsClosed()
 	}
 }
 
-func receiveMessages(deliveries <-chan rmq.Delivery, callbackFunc func(msg Message, ack func(), nack func())) {
+func receiveMessages(deliveries <-chan rmq.Delivery, callbackFunc func(msg m.Message, ack func(), nack func())) {
 	for delivery := range deliveries {
 		d := delivery
-		msg := Message{Body: string(d.Body)}
+		msg := m.Message{Body: string(d.Body)}
 		callbackFunc(msg,
 			func() { d.Ack(false) }, func() { d.Nack(false, true) })
 	}
