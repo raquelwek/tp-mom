@@ -65,13 +65,13 @@ func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings
 	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, 1))
 
 	return &ExchangeMiddleware{
-		ExchangeName: exchange,
-		QueueName:    queue.Name, // la queue interna generada
-		RoutingKeys:  keys,
-		Connection:   conn,
-		Channel:      ch,
-		Confirms:     confirms,
-		CloseErr:     closeErr,
+		exchangeName: exchange,
+		queueName:    queue.Name, // la queue interna generada
+		routingKeys:  keys,
+		connection:   conn,
+		channel:      ch,
+		confirms:     confirms,
+		closeErr:     closeErr,
 	}, nil
 }
 
