@@ -29,6 +29,11 @@ func CreateQueueMiddleware(queueName string, connectionSettings m.ConnSettings) 
 	}
 	closeErr := make(chan *rmq.Error, 1)
 	conn.NotifyClose(closeErr)
+
+	if err := ch.Confirm(false); err != nil {
+		return nil, err
+	}
+
 	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, 1))
 	return &QueueMiddleware{
 		baseMiddleware: baseMiddleware{
