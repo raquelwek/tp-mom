@@ -25,14 +25,10 @@ A la hora de iniciar el middleware con exchange es necesario:
 closeErr := make(chan *rmq.Error, 1)
 conn.NotifyClose(closeErr) // notifica cuando se cierra el socket
 ```
-4. Finalmente, agregamos otro canal para manejar las notificaciones de acurses de recibo por mensajes definidos.
-```
-confirms := ch.NotifyPublish(make(chan rmq.Confirmation, 1))
-```
-NOTA: Los canales creados son manejados por la librería y por ende cerrados correctamente por la misma.
+NOTA: Este por la librería y por ende cerrados correctamente por la misma.
 
 #### Send
-En este caso hacemos la publicación del mensaje en cada una de las routing keys con las que se inicializó el productor, y esperamos el ACK de la misma.
+En este caso hacemos la publicación del mensaje en cada una de las routing keys con las que se inicializó el productor.
 Es importante notar que se usa el exhcange inicializado y le clave de ruteo para saber hacia qué consummidor/es que bindearon con esa clave enviar el mensaje.
 
 ### Queue:  Comportamiento esperado
@@ -55,7 +51,6 @@ para enviar al nombre de la cola asignado, siguiendo la documentación de la lib
 ```
 Luego publicamos al default exchange con el nombre de la queue como routing key para lograr lo antes mencionado.
 
-Y en el para ambos middlewares esperamos un ack de la publicación antes de terminar la función.
 
 ### Comportamiento compartido entre middlewares
 Se englobo el comportamiento compartido en una struct baseMiddleware, para evitar el código repetido.
