@@ -30,7 +30,15 @@ func CreateQueueMiddleware(queueName string, connectionSettings m.ConnSettings) 
 	closeErr := make(chan *rmq.Error, 1)
 	conn.NotifyClose(closeErr)
 	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, 1))
-	return &QueueMiddleware{queueName: queueName, conn: conn, channel: ch, confirms: confirms}, nil
+	return &QueueMiddleware{
+		baseMiddleware: baseMiddleware{
+			queueName: queueName,
+			conn:      conn,
+			channel:   ch,
+			confirms:  confirms,
+			closeErr:  closeErr,
+		},
+	}, nil
 }
 
 func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings m.ConnSettings) (m.Middleware, error) {
@@ -67,13 +75,15 @@ func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings
 	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, len(keys)))
 
 	return &ExchangeMiddleware{
+		baseMiddleware: baseMiddleware{
+			queueName: queue.Name, // la queue interna generada
+			conn:      conn,
+			channel:   ch,
+			confirms:  confirms,
+			closeErr:  closeErr,
+		},
 		exchangeName: exchange,
-		queueName:    queue.Name, // la queue interna generada
 		routingKeys:  keys,
-		connection:   conn,
-		channel:      ch,
-		confirms:     confirms,
-		closeErr:     closeErr,
 	}, nil
 }
 
