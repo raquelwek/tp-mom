@@ -58,11 +58,13 @@ func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings
 	}
 	for _, key := range keys {
 		err = ch.QueueBind(queue.Name, key, exchange, false, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 	closeErr := make(chan *rmq.Error, 1)
 	conn.NotifyClose(closeErr)
-
-	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, 1))
+	confirms := ch.NotifyPublish(make(chan rmq.Confirmation, len(keys)))
 
 	return &ExchangeMiddleware{
 		exchangeName: exchange,

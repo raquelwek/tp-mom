@@ -20,7 +20,6 @@ type ExchangeMiddleware struct { //TODO; Pasar a priv
 
 func (em *ExchangeMiddleware) StartConsuming(callbackFunc func(msg m.Message, ack func(), nack func())) error {
 	tag := em.queueName + "-consumer"
-
 	deliveries, err := em.channel.Consume(
 		em.queueName,
 		tag,
@@ -45,15 +44,15 @@ func (em *ExchangeMiddleware) StartConsuming(callbackFunc func(msg m.Message, ac
 
 func (em *ExchangeMiddleware) StopConsuming() error {
 	if em.consumerTag == "" {
-		return nil // no se estaba consumiendo, no hace nada (como pide la interfaz)
+		return nil
 	}
 
-	err := em.channel.Cancel(em.consumerTag, false) // false = noWait
+	err := em.channel.Cancel(em.consumerTag, false)
 	if err != nil {
 		if em.isDisconnected() {
 			return m.ErrMessageMiddlewareDisconnected
 		}
-		return m.ErrMessageMiddlewareMessage // aunque la interfaz no lo menciona para este método, revisá si aplica
+		return m.ErrMessageMiddlewareMessage
 	}
 
 	em.consumerTag = ""
@@ -85,7 +84,7 @@ func (e *ExchangeMiddleware) Send(msg m.Message) error {
 			if !confirm.Ack {
 				return m.ErrMessageMiddlewareMessage
 			}
-		default:
+		case <-e.closeErr:
 			return m.ErrMessageMiddlewareDisconnected
 		}
 	}
@@ -112,7 +111,6 @@ func (em *ExchangeMiddleware) Close() error {
 	if err := em.connection.Close(); err != nil {
 		return m.ErrMessageMiddlewareClose
 	}
-
 	return nil
 }
 func (qm *ExchangeMiddleware) isDisconnected() bool {
