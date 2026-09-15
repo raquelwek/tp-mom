@@ -16,7 +16,6 @@ type baseMiddleware struct {
 	conn        *rmq.Connection
 	channel     *rmq.Channel
 	closeErr    chan *rmq.Error
-	confirms    chan rmq.Confirmation
 }
 
 func (b *baseMiddleware) isDisconnected() bool {

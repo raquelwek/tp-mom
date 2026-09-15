@@ -38,15 +38,6 @@ func (e *ExchangeMiddleware) Send(msg m.Message) error {
 			}
 			return m.ErrMessageMiddlewareMessage
 		}
-
-		select {
-		case confirm := <-e.confirms:
-			if !confirm.Ack {
-				return m.ErrMessageMiddlewareMessage
-			}
-		case <-e.closeErr:
-			return m.ErrMessageMiddlewareDisconnected
-		}
 	}
 	return nil
 }

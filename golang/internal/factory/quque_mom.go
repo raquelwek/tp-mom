@@ -39,14 +39,5 @@ func (qm *QueueMiddleware) Send(msg m.Message) error {
 		return m.ErrMessageMiddlewareMessage
 	}
 
-	select {
-	case confirm := <-qm.confirms:
-		if !confirm.Ack {
-			return m.ErrMessageMiddlewareMessage
-		}
-	case <-qm.closeErr:
-		return m.ErrMessageMiddlewareDisconnected
-	}
-
 	return nil
 }
